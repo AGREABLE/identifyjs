@@ -16,7 +16,7 @@
 		return defaultOptions;
 	}
 	// https://github.com/lancedikson/bowser
-	function detect(ua) {
+	function _detect(ua) {
 
     function getFirstMatch(regex) {
       var match = ua.match(regex);
@@ -447,11 +447,29 @@
     return result
   }
 
+	function _getLocalIP() {
+		return new Promise(function(resolve, reject){
+			var RTCPeerConnection = window.RTCPeerConnection || window.webkitRTCPeerConnection || window.mozRTCPeerConnection || window.msRTCPeerConnection;
+			if(!RTCPeerConnection) {
+					reject();
+			}
+			var rtc = new RTCPeerConnection();
+			rtc.createDataChannel("TEMP");
+			rtc.onicecandidate = function(iceevent) {
+			  if( iceevent && iceevent.candidate && iceevent.candidate.candidate ) {
+			    var r = /\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/;
+			    var t = iceevent.candidate.candidate.match(r);
+					resolve(t[0]);
+			  }
+			}
+			rtc.createOffer().then(offer=>rtc.setLocalDescription(offer));
+		});
+	}
+
 	(function init(){
 		UARawString = (window && window.navigator && window.navigator.userAgent) ? window.navigator.userAgent : "";
 		platform 		=	(window && window.navigator && window.navigator.platform)  ? window.navigator.platform : "";
-		UA = detect(UARawString);
-
+		UA = _detect(UARawString);
 		//Compare platform
 		if( UA.mobile && platform && (/Win/i.test(platform) || /Mac/i.test(platform) )  ) {
 			isPlatform = false;
@@ -473,11 +491,15 @@
 		getPlatform: function() {
 			return navigator.platform;
 		},
+		getLocalIP: function(callback) {
+			//callback(_getLocalIP());
+			_getLocalIP().then(callback);
+		},	
 		checkPlatform: function() {
 			return isPlatform;
 		}
 	}
-	
+
 	//expose to global object
 	window.identifyJS = identifyJS;
 }) (window);
